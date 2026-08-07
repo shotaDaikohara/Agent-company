@@ -20,6 +20,8 @@ CREATE TABLE users (
     -- Managed Agentsの認証情報(Vault)への参照。Vault自体はAnthropic側で secret を保持し、
     -- ここにはIDのみを持つ。
     vault_id        TEXT,
+    -- ユーザースコープのMemory Store（初回Project作成時に遅延作成、以降再利用）
+    memory_store_id TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -39,6 +41,7 @@ CREATE TABLE projects (
     ma_agent_id     TEXT NOT NULL,                 -- 使用しているAgentのID（Coordinator）
     ma_session_id   TEXT NOT NULL UNIQUE,           -- このProjectに対応するSessionのID
     outcome_id      TEXT,                           -- Outcomeを使う場合の user.define_outcome の outcome_id
+    last_synced_event_id TEXT,                      -- Sync層のカーソル（events.list重複処理防止）
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -123,6 +126,9 @@ CREATE TABLE confirmation_requests (
                             CHECK (status IN ('pending', 'approved', 'rejected')),
     -- Managed AgentsのSession event ID（agent.tool_use / user.tool_confirmation）
     ma_tool_use_event_id TEXT NOT NULL,
+    -- 'native' = user.tool_confirmation（agent_toolset/MCPのalways_ask）
+    -- 'custom' = user.custom_tool_result（自前のexecute_external_actionツール）
+    ma_tool_kind         TEXT NOT NULL DEFAULT 'custom' CHECK (ma_tool_kind IN ('native', 'custom')),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     resolved_at         TIMESTAMPTZ
 );

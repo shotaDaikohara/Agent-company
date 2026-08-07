@@ -41,10 +41,31 @@ src/
   server/              Express API（docs/api-spec.md に対応）
 ```
 
-## 未実装（Phase 2以降）
+## 実装状況
 
-- Webhook受信によるSync層（`agent.tool_use`→`confirmation_requests`への反映、状態変化通知の生成）
-- Memory Store（長期記憶）の作成・アタッチ
-- MCPサーバー（Calendar/Gmail/Drive/Slack）の`always_ask`権限設定
-- Outcome（rubricベースの完遂判定）
-- 認証（複数ユーザー対応）
+### 実装済み・動作確認済み
+- Task DB（SQLite開発版）とスキーマ初期化
+- Managed Agents連携（Agent/Environment作成、Session作成、メッセージ送信、割り込み）
+- **タスク管理カスタムツール**（`create_task` / `update_task_status` / `execute_external_action`）
+  — CoordinatorがTask DBへ状態を反映させる手段。`execute_external_action`は承認されるまで
+  `user.custom_tool_result`を意図的に返さないことで確認フロー（R-2, NG-B）を実現している
+  （`src/managed-agents/customTools.ts`, `src/lib/sync.ts`）
+- **Webhook受信・署名検証**（`client.beta.webhooks.unwrap`、`ANTHROPIC_WEBHOOK_SIGNING_KEY`が必要）
+- **Sync層**（`src/lib/sync.ts`）: Session event履歴をTask DB・confirmation_requests・
+  notificationsへ反映。`last_synced_event_id`をカーソルに冪等処理
+- **Memory Store連携**（ユーザースコープ、初回Project作成時に遅延作成）
+- **Outcome対応**（`createProjectSession`に`rubric`を渡すとuser.define_outcomeを送信）
+- 確認応答（`native`=agent_toolset/MCPの`always_ask`、`custom`=自前ツール）の分岐実装
+
+### 未実装・既知の制約（実際の外部サービス連携・認証情報・デプロイが必要なため）
+- **MCPサーバー（Calendar/Gmail/Drive/Slack等）の実接続**：MCPサーバーURLとVaultへのOAuth
+  認証情報登録が必要。現状`execute_external_action`は「模擬実行」（承認後、実際には何も
+  実行せず証跡だけ記録）に留まる。UI側で「模擬」であることを明示する運用が前提（NG-A対策）。
+- **agent_toolset/MCPツールのnative confirmation**：`agent.tool_use`の`evaluated_permission:
+  "ask"`をどのTaskに紐付けるかの設計が未確定（custom toolのように`task_id`を引数で
+  受け取れないため）。現状はログ出力のみでDBには書き込まない。
+- **認証・複数ユーザー対応**：現状シングルユーザー固定（`demo-user`）
+- **本番デプロイ**：PostgreSQL（`db/schema.sql`）への切り替え、Web/モバイルクライアント本体、
+  Push通知配信（FCM/APNs）は未着手
+- **Webhookエンドポイントの公開**：ローカル開発では`ngrok`等でトンネリングし、
+  Anthropic Consoleでエンドポイント登録・`ANTHROPIC_WEBHOOK_SIGNING_KEY`取得が必要

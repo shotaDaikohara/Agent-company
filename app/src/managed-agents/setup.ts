@@ -1,5 +1,6 @@
 import { client } from "./client.js";
 import { COORDINATOR_SYSTEM_PROMPT } from "./systemPrompt.js";
+import { TASK_BOARD_TOOLS } from "./customTools.js";
 import { configExists, configPath, saveManagedAgentsConfig } from "./config.js";
 
 /**
@@ -36,8 +37,11 @@ async function main() {
     system: COORDINATOR_SYSTEM_PROMPT,
     tools: [
       // 標準ツールセット（bash/read/write/edit/glob/grep/web_fetch/web_search）。
-      // 個々のツールのpermission_policyはPhase 2でMCPツール追加時に調整する。
       { type: "agent_toolset_20260401" },
+      // Task DBへタスク状態を反映させるための自前ツール群（customTools.ts参照）。
+      // execute_external_action は確認フロー(R-2, NG-B)の実体。
+      ...TASK_BOARD_TOOLS,
+      // 個々のMCPツールのpermission_policyは、MCPサーバー追加時（Phase 2以降）に調整する。
     ],
   });
   console.log(`[agents:setup] Agent作成完了: ${agent.id} (version=${agent.version})`);

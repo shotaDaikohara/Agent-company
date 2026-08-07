@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { repo, deriveProjectState } from "../../lib/repo.js";
 import { createProjectSession, sendUserMessage, interruptSession } from "../../managed-agents/session.js";
+import { getOrCreateUserMemoryStore } from "../../managed-agents/memory.js";
 
 const router = Router();
 
@@ -52,7 +53,11 @@ router.post("/", async (req, res) => {
     const { loadManagedAgentsConfig } = await import("../../managed-agents/config.js");
     const config = loadManagedAgentsConfig();
     agentId = config.agentId;
-    const created = await createProjectSession({ goal: parsed.data.goal });
+    const memoryStoreId = await getOrCreateUserMemoryStore(DEMO_USER_ID);
+    const created = await createProjectSession({
+      goal: parsed.data.goal,
+      memoryStoreIds: [memoryStoreId],
+    });
     sessionId = created.sessionId;
   } catch (err) {
     // NG-A対策: Managed Agents側の作成に失敗した場合、Projectを「作成済み」として

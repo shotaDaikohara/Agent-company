@@ -7,11 +7,13 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS users (
-    id              TEXT PRIMARY KEY,
-    email           TEXT NOT NULL UNIQUE,
-    display_name    TEXT,
-    vault_id        TEXT,
-    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    id                  TEXT PRIMARY KEY,
+    email               TEXT NOT NULL UNIQUE,
+    display_name        TEXT,
+    vault_id            TEXT,
+    -- ユーザースコープのMemory Store（初回Project作成時に遅延作成、以降再利用）
+    memory_store_id     TEXT,
+    created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -25,6 +27,8 @@ CREATE TABLE IF NOT EXISTS projects (
     ma_agent_id     TEXT NOT NULL,
     ma_session_id   TEXT NOT NULL UNIQUE,
     outcome_id      TEXT,
+    -- Sync層が最後に処理したSession event ID（events.list の重複処理防止用カーソル）
+    last_synced_event_id TEXT,
     created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
@@ -92,6 +96,9 @@ CREATE TABLE IF NOT EXISTS confirmation_requests (
     status                  TEXT NOT NULL DEFAULT 'pending'
                                 CHECK (status IN ('pending', 'approved', 'rejected')),
     ma_tool_use_event_id    TEXT NOT NULL,
+    -- 応答方法の分岐: 'native' = user.tool_confirmation（agent_toolset/MCPの always_ask）
+    --               'custom' = user.custom_tool_result（自前のexecute_external_actionツール）
+    ma_tool_kind             TEXT NOT NULL DEFAULT 'custom' CHECK (ma_tool_kind IN ('native', 'custom')),
     created_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     resolved_at             TEXT
 );

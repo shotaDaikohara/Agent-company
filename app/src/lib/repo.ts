@@ -10,6 +10,7 @@ export interface ProjectRow {
   ma_agent_id: string;
   ma_session_id: string;
   outcome_id: string | null;
+  last_synced_event_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +36,7 @@ export interface ConfirmationRow {
   risk_detail: string | null;
   status: string;
   ma_tool_use_event_id: string;
+  ma_tool_kind: "native" | "custom";
   created_at: string;
   resolved_at: string | null;
 }
@@ -72,7 +74,9 @@ export const repo = {
       .get(sessionId) as ProjectRow | undefined;
   },
 
-  insertProject(row: Omit<ProjectRow, "created_at" | "updated_at">): void {
+  insertProject(
+    row: Omit<ProjectRow, "created_at" | "updated_at" | "last_synced_event_id">,
+  ): void {
     db.prepare(
       `INSERT INTO projects (id, user_id, goal, category, status, deadline, ma_agent_id, ma_session_id, outcome_id)
        VALUES (@id, @user_id, @goal, @category, @status, @deadline, @ma_agent_id, @ma_session_id, @outcome_id)`,
@@ -121,6 +125,60 @@ export const repo = {
     return db
       .prepare(`SELECT * FROM confirmation_requests ORDER BY created_at DESC`)
       .all() as ConfirmationRow[];
+  },
+
+  getConfirmationByEventId(eventId: string): ConfirmationRow | undefined {
+    return db
+      .prepare(`SELECT * FROM confirmation_requests WHERE ma_tool_use_event_id = ?`)
+      .get(eventId) as ConfirmationRow | undefined;
+  },
+
+  insertConfirmation(row: {
+    id: string;
+    task_id: string;
+    reason: string;
+    proposed_action: string;
+    risk_detail: string | null;
+    ma_tool_use_event_id: string;
+    ma_tool_kind: "native" | "custom";
+  }): void {
+    db.prepare(
+      `INSERT INTO confirmation_requests
+         (id, task_id, reason, proposed_action, risk_detail, ma_tool_use_event_id, ma_tool_kind)
+       VALUES (@id, @task_id, @reason, @proposed_action, @risk_detail, @ma_tool_use_event_id, @ma_tool_kind)`,
+    ).run(row);
+  },
+
+  updateTaskStatus(id: string, status: string): void {
+    db.prepare(
+      `UPDATE tasks SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
+    ).run(status, id);
+  },
+
+  insertTaskDependency(taskId: string, dependsOnTaskId: string): void {
+    db.prepare(
+      `INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)`,
+    ).run(taskId, dependsOnTaskId);
+  },
+
+  updateProjectSyncCursor(id: string, lastSyncedEventId: string): void {
+    db.prepare(`UPDATE projects SET last_synced_event_id = ? WHERE id = ?`).run(
+      lastSyncedEventId,
+      id,
+    );
+  },
+
+  insertExternalActionLog(row: {
+    id: string;
+    confirmation_request_id: string;
+    executed_at: string;
+    result: "success" | "failure";
+    evidence: string | null;
+  }): void {
+    db.prepare(
+      `INSERT INTO external_action_logs (id, confirmation_request_id, executed_at, result, evidence)
+       VALUES (@id, @confirmation_request_id, @executed_at, @result, @evidence)`,
+    ).run(row);
   },
 
   getConfirmation(id: string): ConfirmationRow | undefined {

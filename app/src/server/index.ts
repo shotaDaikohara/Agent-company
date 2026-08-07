@@ -4,8 +4,14 @@ import "../db/index.js"; // 起動時にDB接続を確立（未初期化なら n
 import projectsRouter from "./routes/projects.js";
 import confirmationsRouter from "./routes/confirmations.js";
 import notificationsRouter from "./routes/notifications.js";
+import webhooksRouter from "./routes/webhooks.js";
 
 const app = express();
+
+// Webhook署名検証には生のリクエストボディが必要なため、express.json() より前に
+// このルートだけ express.raw() でマウントする（順序が重要）。
+app.use("/api/webhooks/managed-agents", express.raw({ type: "*/*" }), webhooksRouter);
+
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
@@ -15,13 +21,6 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/projects", projectsRouter);
 app.use("/api/confirmations", confirmationsRouter);
 app.use("/api/notifications", notificationsRouter);
-
-// Webhook受信は Phase 2 で実装（Sync層: docs/technical-design.md 2.9 参照）。
-app.post("/api/webhooks/managed-agents", (_req, res) => {
-  res.status(501).json({
-    error: { code: "not_implemented", message: "Webhook受信は Phase 2 で実装予定です" },
-  });
-});
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: "not_found", message: "エンドポイントが見つかりません" } });
