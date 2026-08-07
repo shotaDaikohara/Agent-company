@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiRequestError } from "../api";
 import type { ProjectSummary, ProjectState } from "../types";
-import { StatusSprite, STATE_LABEL } from "./StatusSprite";
+import { StatusSprite, StatusBadge, STATE_LABEL, EMPTY_OFFICE_CHAR } from "./StatusSprite";
+import { ConfirmationsPanel } from "./ConfirmationsPanel";
 
 const STATE_ORDER: ProjectState[] = ["progress", "waiting_confirmation", "done", "hold"];
 
@@ -70,51 +71,52 @@ export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => vo
 
       {error && <div className="banner-error">{error}</div>}
 
-      <div className="summary">
+      <ConfirmationsPanel onResolved={refresh} />
+
+      <div className="hud">
         {STATE_ORDER.map((s) => (
-          <div className="summary-item" key={s}>
-            <span className={`summary-dot dot-${s}`} />
-            <span className="summary-num">{counts[s]}</span>
-            <span className="summary-label">{STATE_LABEL[s]}</span>
+          <div className="hud-chip" key={s}>
+            <span className={`hud-dot dot-${s}`} />
+            <span className="hud-num">{counts[s]}</span>
+            <span>{STATE_LABEL[s]}</span>
           </div>
         ))}
       </div>
 
-      <p className="section-label">Projects</p>
+      <p className="section-label">オフィスフロア — {projects?.length ?? 0}件のProject</p>
 
-      {projects === null ? (
-        <div className="loading">読み込み中...</div>
-      ) : projects.length === 0 ? (
-        <div className="empty-state">
-          まだProjectがありません。上の欄に依頼を入力してください。
-        </div>
-      ) : (
-        <div className="grid">
-          {projects.map((p) => (
-            <button
-              key={p.id}
-              className={`card state-${p.state}`}
-              onClick={() => onOpenProject(p.id)}
-              type="button"
-            >
-              <div className="card-sprite">
-                <StatusSprite state={p.state} />
-              </div>
-              <div className="card-body">
-                <div className="card-top">
-                  <span className="pill" style={{ color: "var(--ink-faint)" }}>
-                    {p.category ?? "—"}
-                  </span>
-                  <span className={`pill pill-${p.state}`}>{STATE_LABEL[p.state]}</span>
+      <div className="office-floor">
+        {projects === null ? (
+          <div className="loading">読み込み中...</div>
+        ) : projects.length === 0 ? (
+          <div className="empty-office">
+            <img src={EMPTY_OFFICE_CHAR} alt="" />
+            <div className="empty-office-bubble">
+              まだ誰も出社していません。上の欄に依頼を入力してください。
+            </div>
+          </div>
+        ) : (
+          <div className="desk-grid">
+            {projects.map((p) => (
+              <button
+                key={p.id}
+                className="desk-slot"
+                onClick={() => onOpenProject(p.id)}
+                type="button"
+              >
+                <div className="desk-sprite-wrap">
+                  <StatusSprite state={p.state} />
+                  <StatusBadge state={p.state} />
                 </div>
-                <h3 className="card-title">{p.goal}</h3>
-                {p.nextAction && <p className="card-detail">次の処理: {p.nextAction}</p>}
-                {p.deadline && <p className="card-detail">期限: {p.deadline}</p>}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+                <div className="nameplate">
+                  <span className="nameplate-cat">{p.category ?? "—"}</span>
+                  <span className="nameplate-title">{p.goal}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

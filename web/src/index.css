@@ -1,31 +1,38 @@
 :root {
-  --paper: #f3f1ea;
-  --panel: #ffffff;
-  --ink: #20242e;
-  --ink-soft: #5b6372;
-  --ink-faint: #8a93a0;
-  --line: #dedacd;
-  --accent-blue: #3e8ede;
-  --accent-orange: #de7b3e;
+  --sky: #4fa8e8;
+  --sky-deep: #2c6fb0;
+  --floor-line: #1f5590;
+  --paper: #eef2f5;
+  --panel: #fffdf6;
+  --ink: #1b2a41;
+  --ink-soft: #45536b;
+  --ink-faint: #7c879c;
+  --line: #1b2a41;
+  --accent-orange: #e8814a;
   --state-progress: #3e8ede;
-  --state-waiting: #c8801e;
-  --state-done: #3f9463;
-  --state-hold: #8a8f9e;
-  --state-problem: #d64545;
-  --radius: 10px;
+  --state-waiting: #e0a52e;
+  --state-done: #4caf6d;
+  --state-hold: #9aa3b4;
+  --state-problem: #e0533f;
+  --radius: 6px;
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-sm: 3px 3px 0 var(--ink);
+  --font-pixel: "DotGothic16", var(--font-label);
   --font-label: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
-  --font-body: -apple-system, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", "Segoe UI", sans-serif;
+  --font-body: "DotGothic16", -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #15181f;
-    --panel: #1c2029;
-    --ink: #ebedf2;
-    --ink-soft: #9ba3b2;
+    --sky: #2c5f96;
+    --sky-deep: #1c3f66;
+    --floor-line: #14304f;
+    --paper: #10151d;
+    --panel: #1b2330;
+    --ink: #eef2f5;
+    --ink-soft: #a7b1c4;
     --ink-faint: #6b7383;
-    --line: #2b3040;
-    --accent-blue: #5fa3ee;
+    --line: #eef2f5;
     --accent-orange: #ec9257;
     --state-progress: #5fa3ee;
     --state-waiting: #dda355;
@@ -51,95 +58,111 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  image-rendering: pixelated;
 }
 
 button {
   font-family: inherit;
 }
 
-.app {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 28px 24px 64px;
+img {
+  image-rendering: pixelated;
 }
 
-.topbar {
+/* ============ レイアウト ============ */
+.app {
+  min-height: 100%;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+}
+
+.app-main {
+  max-width: 1120px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  flex: 1;
+}
+
+/* ============ ゲーム風バナー ============ */
+.banner {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  background-image: var(--banner-image);
+  background-size: cover;
+  background-position: center;
+  border-bottom: 4px solid var(--ink);
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 22px;
+  padding: 12px 20px;
+}
+
+.banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0) 45%);
+  pointer-events: none;
 }
 
 .brand {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .brand-mark {
-  font-family: var(--font-label);
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: var(--ink-faint);
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #fff;
+  text-shadow: 2px 2px 0 var(--ink);
 }
 
 .brand-title {
   font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 2px 2px 0 var(--ink);
 }
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.banner-actions {
+  position: relative;
+  z-index: 1;
 }
 
-/* --- 依頼フォーム --- */
-.goal-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.goal-form input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+/* ============ ピクセルパネル / ボタン共通 ============ */
+.pixel-panel {
   background: var(--panel);
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.goal-form input:focus-visible {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 1px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .btn {
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   white-space: nowrap;
+  background: var(--panel);
+  color: var(--ink);
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 
 .btn-primary {
-  background: var(--accent-blue);
-  color: white;
-}
-
-.btn-primary:hover {
-  filter: brightness(1.06);
+  background: var(--sky);
+  color: #fff;
 }
 
 .btn-primary:disabled {
@@ -148,57 +171,73 @@ button {
 }
 
 .btn-ghost {
-  background: transparent;
-  border-color: var(--line);
+  background: var(--panel);
   color: var(--ink-soft);
 }
 
-.btn-ghost:hover {
-  border-color: var(--ink-faint);
-}
-
 .btn-danger {
-  background: transparent;
-  border-color: var(--state-problem);
-  color: var(--state-problem);
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
+  background: var(--state-problem);
+  color: #fff;
 }
 
 .banner-error {
-  background: color-mix(in srgb, var(--state-problem) 12%, var(--panel));
-  border: 1px solid color-mix(in srgb, var(--state-problem) 40%, transparent);
+  background: color-mix(in srgb, var(--state-problem) 16%, var(--panel));
+  border: 3px solid var(--state-problem);
+  border-radius: var(--radius);
   color: var(--ink);
   padding: 10px 14px;
-  border-radius: 8px;
   font-size: 13px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
-/* --- サマリー --- */
-.summary {
+/* ============ 依頼フォーム ============ */
+.goal-form {
   display: flex;
-  gap: 20px;
-  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.goal-form input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.goal-form input:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 1px;
+}
+
+/* ============ ステータスHUD ============ */
+.hud {
+  display: flex;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
 
-.summary-item {
+.hud-chip {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  font-family: var(--font-label);
+  padding: 6px 12px;
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
 }
 
-.summary-dot {
-  width: 8px;
-  height: 8px;
+.hud-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 2px;
-  display: inline-block;
 }
 
 .dot-progress {
@@ -215,224 +254,255 @@ button {
   background: var(--state-hold);
 }
 
-.summary-num {
-  font-size: 16px;
+.hud-num {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.summary-label {
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
 .section-label {
-  font-family: var(--font-label);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin: 0 0 12px 2px;
-}
-
-/* --- Projectカード --- */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 14px;
-}
-
-.empty-state {
-  border: 1px dashed var(--line);
-  border-radius: var(--radius);
-  padding: 32px;
-  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
-  font-size: 14px;
+  margin: 4px 0 12px 2px;
 }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--line);
+/* ============ オフィスフロア（ダッシュボード本体） ============ */
+.office-floor {
+  background-image: repeating-linear-gradient(
+      0deg,
+      var(--floor-line) 0px,
+      var(--floor-line) 3px,
+      transparent 3px,
+      transparent 46px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      var(--floor-line) 0px,
+      var(--floor-line) 3px,
+      transparent 3px,
+      transparent 96px
+    );
+  background-color: var(--sky);
+  border: 3px solid var(--ink);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.desk-grid {
   display: grid;
-  grid-template-columns: 84px 1fr;
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
+}
+
+.desk-slot {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: border-color 0.15s ease;
-  text-align: left;
+  padding: 8px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+  position: relative;
 }
 
-.card:hover {
-  border-color: var(--ink-faint);
+.desk-slot:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
 }
 
-.card-sprite {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent-blue) 22%, var(--panel)) 0%,
-    color-mix(in srgb, var(--accent-blue) 10%, var(--panel)) 100%
-  );
+.desk-slot:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.desk-sprite-wrap {
+  position: relative;
+  width: 100%;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid var(--line);
-  padding: 8px;
+  background: color-mix(in srgb, var(--sky) 18%, var(--panel));
+  border: 2px solid var(--ink);
+  border-radius: 4px;
 }
 
-.state-hold .card-sprite {
-  background: color-mix(in srgb, var(--state-hold) 14%, var(--panel));
-  opacity: 0.7;
-}
-.state-done .card-sprite {
-  background: color-mix(in srgb, var(--state-done) 14%, var(--panel));
+.desk-sprite-wrap img {
+  height: 60px;
+  width: auto;
 }
 
-.card-sprite img {
-  width: 62px;
-  height: auto;
-  image-rendering: pixelated;
-}
-
-.card-body {
-  padding: 12px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.card-top {
+.state-badge {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  font-size: 12px;
+  background: var(--panel);
 }
 
-.pill {
-  font-family: var(--font-label);
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  white-space: nowrap;
+.badge-progress {
+  background: var(--state-progress);
+}
+.badge-waiting_confirmation {
+  background: var(--state-waiting);
+}
+.badge-done {
+  background: var(--state-done);
+}
+.badge-hold {
+  background: var(--state-hold);
 }
 
-.pill-progress {
-  color: var(--state-progress);
-  background: color-mix(in srgb, var(--state-progress) 16%, transparent);
-}
-.pill-waiting_confirmation {
-  color: var(--state-waiting);
-  background: color-mix(in srgb, var(--state-waiting) 18%, transparent);
-}
-.pill-done {
-  color: var(--state-done);
-  background: color-mix(in srgb, var(--state-done) 16%, transparent);
-}
-.pill-hold {
-  color: var(--state-hold);
-  background: color-mix(in srgb, var(--state-hold) 16%, transparent);
+.nameplate {
+  width: 100%;
 }
 
-.card-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
+.nameplate-cat {
+  font-size: 10px;
+  color: var(--ink-faint);
+  display: block;
 }
 
-.card-detail {
-  margin: 0;
+.nameplate-title {
   font-size: 12.5px;
-  color: var(--ink-soft);
-  line-height: 1.5;
+  color: var(--ink);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* --- 通知ベル --- */
+.empty-office {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+}
+
+.empty-office img {
+  height: 72px;
+}
+
+.empty-office-bubble {
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+/* ============ 通知ベル ============ */
 .bell-wrap {
   position: relative;
 }
 
 .bell-btn {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  cursor: pointer;
-  font-size: 13px;
   position: relative;
 }
 
 .bell-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -8px;
+  right: -8px;
   background: var(--state-problem);
   color: white;
   font-size: 10px;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
+  border: 2px solid var(--ink);
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-label);
 }
 
 .bell-dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   width: 320px;
   max-height: 360px;
   overflow-y: auto;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 3px solid var(--ink);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow);
   z-index: 20;
   padding: 8px;
 }
 
 .notif-item {
   padding: 10px;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 4px;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
 .notif-item:hover {
-  background: color-mix(in srgb, var(--accent-blue) 8%, transparent);
+  background: color-mix(in srgb, var(--sky) 14%, transparent);
 }
 
 .notif-item-title {
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 2px;
 }
 
 .notif-item-meta {
-  font-family: var(--font-label);
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--ink-faint);
 }
 
-/* --- 確認カード --- */
+/* ============ 確認カード（メモ用紙風） ============ */
 .confirm-card {
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--state-waiting) 40%, var(--line));
+  background: #fff9df;
+  border: 3px solid var(--ink);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   padding: 14px 16px;
   margin-bottom: 12px;
+  position: relative;
+}
+
+.confirm-card::before {
+  content: "!";
+  position: absolute;
+  top: -14px;
+  left: 14px;
+  width: 26px;
+  height: 26px;
+  background: var(--state-waiting);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
 }
 
 .confirm-summary {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 6px;
+  font-size: 13.5px;
+  margin: 4px 0 6px;
 }
 
 .confirm-meta {
-  font-family: var(--font-label);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-soft);
   margin-bottom: 10px;
 }
@@ -442,18 +512,19 @@ button {
   gap: 8px;
 }
 
-/* --- Project詳細 --- */
+/* ============ Project詳細 ============ */
 .back-btn {
   background: none;
   border: none;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 12.5px;
   cursor: pointer;
   padding: 0;
   margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  font-family: var(--font-body);
 }
 
 .back-btn:hover {
@@ -469,14 +540,12 @@ button {
 }
 
 .detail-goal {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
   margin: 0 0 6px;
 }
 
 .detail-meta {
-  font-family: var(--font-label);
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ink-soft);
 }
 
@@ -492,9 +561,9 @@ button {
   gap: 10px;
   padding: 10px 12px;
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 13.5px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  font-size: 13px;
 }
 
 .task-title {
@@ -502,9 +571,33 @@ button {
 }
 
 .task-due {
-  font-family: var(--font-label);
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--ink-faint);
+}
+
+.pill {
+  font-size: 10.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 2px solid var(--ink);
+}
+
+.pill-progress {
+  color: #fff;
+  background: var(--state-progress);
+}
+.pill-waiting_confirmation {
+  color: #fff;
+  background: var(--state-waiting);
+}
+.pill-done {
+  color: #fff;
+  background: var(--state-done);
+}
+.pill-hold {
+  color: #fff;
+  background: var(--state-hold);
 }
 
 .message-form {
@@ -515,16 +608,26 @@ button {
 
 .message-form input {
   flex: 1;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--ink);
-  font-size: 13.5px;
+  font-family: var(--font-body);
+  font-size: 13px;
 }
 
 .loading {
   color: var(--ink-faint);
   font-size: 13px;
   padding: 24px 0;
+}
+
+.empty-state {
+  border: 3px dashed var(--ink-faint);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
 }
