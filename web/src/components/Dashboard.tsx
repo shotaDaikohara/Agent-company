@@ -1,21 +1,55 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiRequestError } from "../api";
 import type { ProjectSummary, ProjectState } from "../types";
 import { StatusSprite, StatusBadge, STATE_LABEL, EMPTY_OFFICE_CHAR } from "./StatusSprite";
 import { ConfirmationsPanel } from "./ConfirmationsPanel";
+import { ProgressGauge } from "./ProgressGauge";
 
 const STATE_ORDER: ProjectState[] = ["progress", "waiting_confirmation", "done", "hold"];
+
+// 歩行アニメーションの再生時間（CSS側の @keyframes walk-in と合わせる）
+const WALK_IN_MS = 900;
 
 export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [goal, setGoal] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 直前ポーリング時点でのstateを記録し、「hold/doneなど→progress」に切り替わった瞬間だけ検知する
+  const prevStatesRef = useRef<Map<string, ProjectState>>(new Map());
+  const isFirstLoadRef = useRef(true);
+  const [walkingIds, setWalkingIds] = useState<Set<string>>(new Set());
 
   async function refresh() {
     try {
-      const { projects } = await api.listProjects();
-      setProjects(projects);
+      const { projects: next } = await api.listProjects();
+      const prevStates = prevStatesRef.current;
+
+      if (!isFirstLoadRef.current) {
+        const newlyStarted = next.filter(
+          (p) => p.state === "progress" && prevStates.get(p.id) !== "progress",
+        );
+        if (newlyStarted.length > 0) {
+          setWalkingIds((cur) => {
+            const merged = new Set(cur);
+            newlyStarted.forEach((p) => merged.add(p.id));
+            return merged;
+          });
+          newlyStarted.forEach((p) => {
+            setTimeout(() => {
+              setWalkingIds((cur) => {
+                const rest = new Set(cur);
+                rest.delete(p.id);
+                return rest;
+              });
+            }, WALK_IN_MS);
+          });
+        }
+      }
+
+      prevStatesRef.current = new Map(next.map((p) => [p.id, p.state]));
+      isFirstLoadRef.current = false;
+      setProjects(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Projectの取得に失敗しました");
     }
@@ -86,6 +120,13 @@ export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => vo
       <p className="section-label">オフィスフロア — {projects?.length ?? 0}件のProject</p>
 
       <div className="office-floor">
+        <div className="office-wall" aria-hidden="true">
+          <span className="office-window" />
+          <span className="office-door" />
+          <span className="office-plant">🪴</span>
+          <span className="office-window" />
+        </div>
+
         {projects === null ? (
           <div className="loading">読み込み中...</div>
         ) : projects.length === 0 ? (
@@ -96,21 +137,23 @@ export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => vo
             </div>
           </div>
         ) : (
-          <div className="desk-grid">
+          <div className="seat-grid">
             {projects.map((p) => (
               <button
                 key={p.id}
-                className="desk-slot"
+                className={`seat${p.state === "progress" ? " seat-working" : ""}`}
                 onClick={() => onOpenProject(p.id)}
                 type="button"
+                title={p.goal}
               >
-                <div className="desk-sprite-wrap">
-                  <StatusSprite state={p.state} />
+                <div className="seat-desk">
+                  <StatusSprite state={p.state} walking={walkingIds.has(p.id)} />
                   <StatusBadge state={p.state} />
                 </div>
-                <div className="nameplate">
-                  <span className="nameplate-cat">{p.category ?? "—"}</span>
-                  <span className="nameplate-title">{p.goal}</span>
+                <div className="seat-label">
+                  <span className="seat-label-cat">{p.category ?? "—"}</span>
+                  <span className="seat-label-title">{p.goal}</span>
+                  <ProgressGauge counts={p.taskCounts} />
                 </div>
               </button>
             ))}

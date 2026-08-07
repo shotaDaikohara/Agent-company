@@ -143,7 +143,12 @@ async function handleCustomToolUse(
       );
       return;
     }
-    repo.updateTaskStatus(taskId, status);
+    // result（実行結果の要約）が渡された場合のみtasks.resultへ反映する（UC-05）。
+    const result =
+      typeof input.result === "string" && input.result.trim().length > 0
+        ? input.result.trim()
+        : undefined;
+    repo.updateTaskStatus(taskId, status, result);
     await respondCustomToolResult(project.ma_session_id, event.id, "ok");
     return;
   }

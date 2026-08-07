@@ -42,7 +42,9 @@ export const TASK_BOARD_TOOLS = [
       "既存タスクの状態を更新する。作業を開始したら 'in_progress' に、完了したら 'done' に、" +
       "他タスクの完了待ちで着手できない場合は 'blocked' に、必ず更新すること。" +
       "確認待ちの状態は execute_external_action の呼び出しによって自動的に反映されるため、" +
-      "'waiting_confirmation' への更新にこのツールを使う必要はない。",
+      "'waiting_confirmation' への更新にこのツールを使う必要はない。" +
+      "'done' に更新する際は result を必ず含めること。ユーザーはresultだけを見て" +
+      "「何が実行され、何が分かったか」を判断するため、実況ではなく成果物・結論を書くこと。",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -50,6 +52,13 @@ export const TASK_BOARD_TOOLS = [
         status: {
           type: "string",
           enum: ["pending", "in_progress", "blocked", "done"],
+        },
+        result: {
+          type: "string",
+          description:
+            "実行結果・成果物の要約（例:「新幹線3案を比較し価格・所要時間を整理」「区役所へ電話し、" +
+            "転出届は引っ越し2週間前から受付可能と確認」）。'done'への更新時は必須級。" +
+            "調査・比較・下書き作成等では結論や選択肢を、外部操作の代行では確認した事実を書く。",
         },
       },
       required: ["task_id", "status"],

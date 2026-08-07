@@ -65,6 +65,8 @@ CREATE TABLE tasks (
     source          TEXT NOT NULL DEFAULT 'auto' CHECK (source IN ('auto', 'user')),
     -- どのSession event（agent.tool_use等）に由来するタスクかの参照（監査・デバッグ用）
     ma_event_id     TEXT,
+    -- 実行結果の要約（update_task_statusのresult引数）。ユーザーが「何が実行されたか」を後から確認できるようにする。
+    result          TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

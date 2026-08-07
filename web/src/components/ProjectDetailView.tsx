@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiRequestError } from "../api";
 import type { ProjectDetail } from "../types";
+import { ProgressGauge } from "./ProgressGauge";
 
 const TASK_STATUS_LABEL: Record<string, string> = {
   pending: "未着手",
@@ -90,6 +91,16 @@ export function ProjectDetailView({
             </button>
           </div>
 
+          <div className="quest-bar">
+            <span className="quest-bar-label">進捗</span>
+            <ProgressGauge counts={project.taskCounts} size="lg" />
+            <span className="quest-bar-pct">
+              {project.taskCounts.total > 0
+                ? `${Math.round((project.taskCounts.done / project.taskCounts.total) * 100)}%`
+                : "—"}
+            </span>
+          </div>
+
           <p className="section-label">Tasks（{project.tasks.length}）</p>
           {project.tasks.length === 0 ? (
             <div className="empty-state">
@@ -98,12 +109,32 @@ export function ProjectDetailView({
           ) : (
             <div className="task-list">
               {project.tasks.map((t) => (
-                <div className="task-row" key={t.id}>
-                  <span className={`pill pill-${t.status === "in_progress" ? "progress" : t.status}`}>
-                    {TASK_STATUS_LABEL[t.status] ?? t.status}
-                  </span>
-                  <span className="task-title">{t.title}</span>
-                  {t.dueDate && <span className="task-due">期限 {t.dueDate}</span>}
+                <div className="task-item" key={t.id}>
+                  <div className={`task-row${t.status === "done" ? " task-row-done" : ""}`}>
+                    <span className={`pill pill-${t.status === "in_progress" ? "progress" : t.status}`}>
+                      {t.status === "done" ? "✓" : TASK_STATUS_LABEL[t.status] ?? t.status}
+                    </span>
+                    <span className="task-title">{t.title}</span>
+                    {t.dueDate && <span className="task-due">期限 {t.dueDate}</span>}
+                  </div>
+                  {t.result && (
+                    <p className="task-result">
+                      <span className="task-result-label">結果</span>
+                      {t.result}
+                    </p>
+                  )}
+                  {t.executionLog && (
+                    <p className={`task-result task-result-${t.executionLog.result}`}>
+                      <span className="task-result-label">
+                        実行証跡{t.executionLog.result === "failure" ? "（失敗）" : ""}
+                      </span>
+                      {t.executionLog.evidence ?? "証跡は記録されていません"}
+                      <span className="task-result-time">
+                        {" "}
+                        （{new Date(t.executionLog.executedAt).toLocaleString("ja-JP")}）
+                      </span>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

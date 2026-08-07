@@ -24,8 +24,18 @@ export interface TaskRow {
   due_date: string | null;
   source: string;
   ma_event_id: string | null;
+  result: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ExternalActionLogRow {
+  id: string;
+  confirmation_request_id: string;
+  executed_at: string;
+  result: "success" | "failure";
+  evidence: string | null;
+  created_at: string;
 }
 
 export interface ConfirmationRow {
@@ -109,7 +119,7 @@ export const repo = {
       .all(...taskIds) as Array<{ task_id: string; depends_on_task_id: string }>;
   },
 
-  insertTask(row: Omit<TaskRow, "created_at" | "updated_at">): void {
+  insertTask(row: Omit<TaskRow, "created_at" | "updated_at" | "result">): void {
     db.prepare(
       `INSERT INTO tasks (id, project_id, parent_task_id, title, status, due_date, source, ma_event_id)
        VALUES (@id, @project_id, @parent_task_id, @title, @status, @due_date, @source, @ma_event_id)`,
@@ -149,10 +159,20 @@ export const repo = {
     ).run(row);
   },
 
-  updateTaskStatus(id: string, status: string): void {
-    db.prepare(
-      `UPDATE tasks SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
-    ).run(status, id);
+  /**
+   * result を渡した場合のみ tasks.result を更新する（UC-05）。呼び出し側の多くは
+   * 状態遷移のみを目的とするため、result省略時は既存の実行結果を消さない。
+   */
+  updateTaskStatus(id: string, status: string, result?: string): void {
+    if (result !== undefined) {
+      db.prepare(
+        `UPDATE tasks SET status = ?, result = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
+      ).run(status, result, id);
+    } else {
+      db.prepare(
+        `UPDATE tasks SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
+      ).run(status, id);
+    }
   },
 
   insertTaskDependency(taskId: string, dependsOnTaskId: string): void {
@@ -179,6 +199,23 @@ export const repo = {
       `INSERT INTO external_action_logs (id, confirmation_request_id, executed_at, result, evidence)
        VALUES (@id, @confirmation_request_id, @executed_at, @result, @evidence)`,
     ).run(row);
+  },
+
+  /**
+   * タスクに紐づく承認済み外部操作の実行証跡を最新1件だけ返す（UC-11）。
+   * confirmation_requests.task_id 経由でexternal_action_logsを引く。
+   * 1タスクに複数回の却下→再依頼が起きた場合も、直近の証跡だけをUIに出す。
+   */
+  getLatestExternalActionLogForTask(taskId: string): ExternalActionLogRow | undefined {
+    return db
+      .prepare(
+        `SELECT eal.* FROM external_action_logs eal
+         JOIN confirmation_requests cr ON cr.id = eal.confirmation_request_id
+         WHERE cr.task_id = ?
+         ORDER BY eal.created_at DESC
+         LIMIT 1`,
+      )
+      .get(taskId) as ExternalActionLogRow | undefined;
   },
 
   getConfirmation(id: string): ConfirmationRow | undefined {

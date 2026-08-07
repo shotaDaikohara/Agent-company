@@ -1,12 +1,14 @@
 # AI Cowork
 
-日常生活のタスクをAIと共同で遂行するシステム。設計思想は [docs/technical-design.md](docs/technical-design.md) を参照。
+日常生活のタスクをAIと共同で遂行するシステム。設計思想は [docs/technical-design.md](docs/technical-design.md)、
+実装の実際の動作機序（イベント・データの流れ）は [docs/system-mechanics.md](docs/system-mechanics.md)、
+ユースケース単位での実装・未実装の棚卸しは [docs/use-cases.md](docs/use-cases.md) を参照。
 
 ## 構成
 
 | ディレクトリ | 内容 |
 |---|---|
-| `docs/` | 技術設計書・API仕様書 |
+| `docs/` | 技術設計書・動作機序設計書・ユースケース一覧・API仕様書 |
 | `db/` | 本番用DBスキーマ（PostgreSQL） |
 | `assets/pixel-office/` | 状態可視化UI用ピクセルアート素材（2dPig, CC0） |
 | `app/` | バックエンド（Express API + Task DB + Claude Managed Agents連携） |

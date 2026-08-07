@@ -5,6 +5,7 @@ import projectsRouter from "./routes/projects.js";
 import confirmationsRouter from "./routes/confirmations.js";
 import notificationsRouter from "./routes/notifications.js";
 import webhooksRouter from "./routes/webhooks.js";
+import memoryRouter from "./routes/memory.js";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/projects", projectsRouter);
 app.use("/api/confirmations", confirmationsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/memory", memoryRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: "not_found", message: "エンドポイントが見つかりません" } });

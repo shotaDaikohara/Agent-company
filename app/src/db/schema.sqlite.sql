@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     due_date        TEXT,
     source          TEXT NOT NULL DEFAULT 'auto' CHECK (source IN ('auto', 'user')),
     ma_event_id     TEXT,
+    -- 実行結果の要約（update_task_statusのresult引数）。UC-05対応。何を確認・実施したかの証跡。
+    result          TEXT,
     created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );

@@ -2,6 +2,11 @@ export type ProjectState = "progress" | "waiting_confirmation" | "done" | "hold"
 export type ProjectStatus = "active" | "blocked" | "completed" | "cancelled";
 export type TaskStatus = "pending" | "in_progress" | "waiting_confirmation" | "blocked" | "done";
 
+export interface TaskCounts {
+  done: number;
+  total: number;
+}
+
 export interface ProjectSummary {
   id: string;
   goal: string;
@@ -11,6 +16,13 @@ export interface ProjectSummary {
   state: ProjectState;
   nextAction: string | null;
   updatedAt: string;
+  taskCounts: TaskCounts;
+}
+
+export interface TaskExecutionLog {
+  executedAt: string;
+  result: "success" | "failure";
+  evidence: string | null;
 }
 
 export interface Task {
@@ -20,6 +32,10 @@ export interface Task {
   status: TaskStatus;
   dueDate: string | null;
   dependsOn: string[];
+  /** Coordinator Agentが記録した実行結果の要約（update_task_statusのresult引数）。UC-05 */
+  result: string | null;
+  /** 承認済み外部操作の実行証跡。模擬実行の場合はevidenceにその旨が明記される。UC-11 */
+  executionLog: TaskExecutionLog | null;
 }
 
 export interface ProjectDetail {
@@ -29,6 +45,7 @@ export interface ProjectDetail {
   status: ProjectStatus;
   deadline: string | null;
   state: ProjectState;
+  taskCounts: TaskCounts;
   tasks: Task[];
 }
 

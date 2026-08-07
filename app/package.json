@@ -8,6 +8,7 @@
     "db:init": "tsx src/db/init.ts",
     "agents:setup": "tsx src/managed-agents/setup.ts",
     "agents:update-model": "tsx scripts/update-model.mjs",
+    "agents:update-tools": "tsx scripts/update-tools.mjs",
     "sync": "tsx scripts/manual-sync.mjs",
     "session:status": "tsx scripts/check-session.mjs",
     "session:messages": "tsx scripts/print-messages.mjs",

@@ -29,6 +29,10 @@ router.get("/", (req, res) => {
       state: deriveProjectState(tasks),
       nextAction: (waiting ?? inProgress)?.title ?? null,
       updatedAt: p.updated_at,
+      taskCounts: {
+        done: tasks.filter((t) => t.status === "done").length,
+        total: tasks.length,
+      },
     };
   });
 
@@ -103,14 +107,27 @@ router.get("/:id", (req, res) => {
     status: project.status,
     deadline: project.deadline,
     state: deriveProjectState(tasks),
-    tasks: tasks.map((t) => ({
-      id: t.id,
-      parentTaskId: t.parent_task_id,
-      title: t.title,
-      status: t.status,
-      dueDate: t.due_date,
-      dependsOn: deps.filter((d) => d.task_id === t.id).map((d) => d.depends_on_task_id),
-    })),
+    taskCounts: {
+      done: tasks.filter((t) => t.status === "done").length,
+      total: tasks.length,
+    },
+    tasks: tasks.map((t) => {
+      const log = repo.getLatestExternalActionLogForTask(t.id);
+      return {
+        id: t.id,
+        parentTaskId: t.parent_task_id,
+        title: t.title,
+        status: t.status,
+        dueDate: t.due_date,
+        dependsOn: deps.filter((d) => d.task_id === t.id).map((d) => d.depends_on_task_id),
+        // UC-05: Coordinator Agentが自ら書いた実行結果の要約（update_task_statusのresult引数）
+        result: t.result,
+        // UC-11: 承認済み外部操作の実行証跡（模擬実行かどうかもevidenceに含まれる）
+        executionLog: log
+          ? { executedAt: log.executed_at, result: log.result, evidence: log.evidence }
+          : null,
+      };
+    }),
   });
 });
 
