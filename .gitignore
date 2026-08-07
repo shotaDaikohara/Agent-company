@@ -13,3 +13,5 @@ app/data/
 app/.managed-agents.json
 
 .DS_Store
+web/node_modules/
+web/dist/
