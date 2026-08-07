@@ -1,0 +1,15 @@
+# 展開済み(assets/pixel-office/)と重複するため、生のzipはコミット対象外にする
+PixelOffice.zip
+
+# Node
+node_modules/
+dist/
+.env
+
+# Task DB(開発用SQLite)
+app/data/
+
+# Managed Agentsのセットアップ結果（環境ごとに異なるため各自で作成する）
+app/.managed-agents.json
+
+.DS_Store

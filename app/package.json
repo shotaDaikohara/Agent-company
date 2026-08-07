@@ -1,0 +1,30 @@
+{
+  "name": "ai-cowork-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI Cowork — Phase 1 バックエンド（Task DB + Managed Agents連携 + REST API）",
+  "scripts": {
+    "db:init": "tsx src/db/init.ts",
+    "agents:setup": "tsx src/managed-agents/setup.ts",
+    "dev": "tsx watch src/server/index.ts",
+    "start": "tsx src/server/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.10",
+    "typescript": "^7.0.2"
+  }
+}
