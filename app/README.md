@@ -31,6 +31,30 @@ curl -X POST http://localhost:3001/api/projects \
 `ANTHROPIC_API_KEY` が未設定、または `agents:setup` 未実行の場合、Project作成は
 **502 `managed_agents_unavailable`** を返す（偽の成功を返さない設計。NG-A対策）。
 
+### Webhook未設定時の暫定運用（手動Sync）
+
+本番はManaged AgentsのWebhookが`session.status_idled`等をSyncエンドポイントへ通知する設計だが、
+ローカル開発でWebhookを公開していない間は、以下のスクリプトで手動同期・状態確認ができる。
+
+```bash
+npm run sync -- <session_id>              # Session event履歴をTask DBへ反映（Webhookの代替）
+npm run session:status -- <session_id>     # Sessionのstatus・event一覧を確認
+npm run session:messages -- <session_id>   # agent.messageのテキストのみ表示
+```
+
+`session_id` は `POST /api/projects` のレスポンス（`maSessionId`）または
+`SELECT ma_session_id FROM projects` で確認できる。
+
+### モデルの変更
+
+既定モデルは `src/managed-agents/setup.ts` で指定（現在: `claude-haiku-4-5`）。
+既存Agentのモデルを変更する場合は新規作成せず更新する：
+
+```bash
+# setup.tsのmodelを書き換えたうえで
+npm run agents:update-model
+```
+
 ## ディレクトリ構成
 
 ```

@@ -7,6 +7,10 @@
   "scripts": {
     "db:init": "tsx src/db/init.ts",
     "agents:setup": "tsx src/managed-agents/setup.ts",
+    "agents:update-model": "tsx scripts/update-model.mjs",
+    "sync": "tsx scripts/manual-sync.mjs",
+    "session:status": "tsx scripts/check-session.mjs",
+    "session:messages": "tsx scripts/print-messages.mjs",
     "dev": "tsx watch src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "build": "tsc",

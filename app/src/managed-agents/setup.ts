@@ -33,7 +33,9 @@ async function main() {
   console.log("[agents:setup] Coordinator Agent を作成しています...");
   const agent = await client.beta.agents.create({
     name: "AI Cowork Coordinator",
-    model: "claude-opus-5",
+    // コスト優先でhaikuを既定に。品質を優先する場合は "claude-opus-5" 等に変更する
+    // （変更後は scripts/update-model.mjs で既存Agentを更新できる）。
+    model: "claude-haiku-4-5",
     system: COORDINATOR_SYSTEM_PROMPT,
     tools: [
       // 標準ツールセット（bash/read/write/edit/glob/grep/web_fetch/web_search）。
