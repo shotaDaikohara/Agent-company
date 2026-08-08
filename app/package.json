@@ -12,10 +12,11 @@
     "sync": "tsx scripts/manual-sync.mjs",
     "session:status": "tsx scripts/check-session.mjs",
     "session:messages": "tsx scripts/print-messages.mjs",
-    "dev": "tsx watch src/server/index.ts",
+    "dev": "tsx watch --include .env --clear-screen=false src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -29,7 +30,10 @@
     "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2",
     "tsx": "^4.23.10",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
   }
 }

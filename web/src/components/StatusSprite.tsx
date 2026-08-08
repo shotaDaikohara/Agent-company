@@ -34,6 +34,9 @@ export function StatusSprite({
   if (isWorking) classes.push("is-working");
   if (isWaiting) classes.push("is-waiting");
   if (walking) classes.push("is-walking-in");
+  // R: 机に人がいる状態（作業中・確認待ち）は歩行演出中を除き、常にゆっくり呼吸するように
+  // 動かし続け、静止画に見えないようにする。作業中は typing-bob がより強い動きで上書きする。
+  if ((isWorking || isWaiting) && !walking) classes.push("is-idle");
 
   return (
     <div className={classes.join(" ")}>
@@ -62,4 +65,6 @@ export const STATE_LABEL: Record<ProjectState, string> = {
   hold: "未着手",
 };
 
+// 8席固定表示のうち、Projectが割り当てられていない座席の表示に使う（未使用のimportを避けるため保持）
 export const EMPTY_OFFICE_CHAR = emptyOfficeChar;
+export const SEAT_PLACEHOLDER_DESK = deskEmpty2;

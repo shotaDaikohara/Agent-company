@@ -80,6 +80,11 @@ flowchart TB
 
 MCPサーバー（カレンダー・メール等）は未登録（8章）。
 
+**TEST_MODE**（`.env`の`TEST_MODE=true`）を有効にすると、`db:init`のみで（`agents:setup`・
+`ANTHROPIC_API_KEY`なしで）動作確認できる。`POST /api/projects`がManaged Agentsへの接続を
+`src/lib/testMode.ts`のシミュレーションに置き換え、Coordinator Agentを一切呼ばずにタスクの
+進行中→完了（`result: "Test Result"`）までTask DB・通知・UIの流れを再現する。詳細は3.1参照。
+
 ---
 
 ## 3. 処理フロー詳細
@@ -108,13 +113,24 @@ sequenceDiagram
 
 - Session作成に失敗（`ANTHROPIC_API_KEY`未設定・`agents:setup`未実行等）した場合は**Projectを作成せず**502 `managed_agents_unavailable`を返す。「作成できたことにして後で失敗が判明する」という偽装をしない（NG-A対策、`routes/projects.ts`）。
 - この時点でCoordinator Agentの推論・ツール呼び出しはAnthropic側で非同期に開始される。APIサーバーはレスポンスを返して終わり、以降の進行は3.2以降のWebhook/Syncで検知する。
+- **TEST_MODE**（`.env`の`TEST_MODE=true`）時はこの図のMA/Sess部分を丸ごとバイパスする。
+  `loadManagedAgentsConfig()`・`getOrCreateUserMemoryStore()`・`createProjectSession()`は
+  一切呼ばれず、`ma_session_id`には`test-session-`で始まるダミーIDを払い出す
+  （`isTestSessionId()`で判定。`/messages`・`/interrupt`もこのIDのProjectには実Sessionを呼ばない）。
+  代わりに`runTestModeSimulation()`（`src/lib/testMode.ts`）がタスクを1件`in_progress`で作成し、
+  5秒後に`repo.updateTaskStatus(taskId, "done", "Test Result")`と`Project.status = completed`、
+  完了通知の挿入までを同期的に行う。Sync層・Webhookを経由しない点を除けば、UI/APIから見た結果は
+  実運用時に「1タスクだけの依頼が完了した」場合と区別できない。
 
 ### 3.2 Coordinator Agentの自律実行とタスク登録
 
 Session内でCoordinator Agentは以下を行う（システムプロンプト: `systemPrompt.ts`）：
 
 1. `goal`をサブタスクへ分解し、`create_task`（custom tool）を呼んでTask DBに登録させる
-2. 作業を開始したら`update_task_status(in_progress)`、完了したら`update_task_status(done)`を呼ぶ
+2. 作業を開始したら`update_task_status(in_progress)`、完了したら`update_task_status(done)`を呼ぶ。
+   `done`にする際は`result`引数（実行結果・成果物の要約）を渡すのが必須級の運用になっている
+   （`systemPrompt.ts`で明示的に指示。「実況ではなく結論を書け」）。これがTask DBの`tasks.result`
+   に複写され、ダッシュボードで「何が実行されたか」を確認する唯一の手段になる（UC-05、8章参照）。
 3. 情報収集・比較・下書き作成等は`agent_toolset`ツールで自律実行する（確認不要）
 4. 予約・購入・送信・解約・削除・申請など不可逆/高リスクな操作が必要になったら`execute_external_action`を呼ぶ
 
@@ -168,7 +184,7 @@ flowchart TB
     Outcome -->|failed| Fail[通知: 完遂条件を満たせず]
 
     Custom --> CreateTask[create_task:<br/>tasks INSERT + task_dependencies INSERT<br/>→ respondCustomToolResult ですぐ応答]
-    Custom --> UpdateStatus[update_task_status:<br/>tasks.status UPDATE<br/>→ respondCustomToolResult ですぐ応答]
+    Custom --> UpdateStatus[update_task_status:<br/>tasks.status/tasks.result UPDATE<br/>→ respondCustomToolResult ですぐ応答]
     Custom --> ExecAction["execute_external_action:<br/>confirmation_requests INSERT(status=pending)<br/>tasks.status=waiting_confirmation<br/>通知(confirmation)生成<br/>→ 応答を返さず待機（3.5）"]
 
     Done --> Cursor2[last_synced_event_id 更新]
@@ -236,6 +252,12 @@ tasks.length === 0                      → "hold"
 
 `nextAction`は「確認待ちのタスク」を優先し、なければ「進行中のタスク」のタイトルを表示する。Web UI（`Dashboard.tsx`）はこの`state`をピクセルオフィスの見た目（デスクの人の有無・吹き出しバッジ等）へマッピングする。
 
+`GET /api/projects/:id`はタスクごとに`result`（Agentが書いた実行結果の要約）と`executionLog`
+（`external_action_logs`から`repo.getLatestExternalActionLogForTask()`で引いた、承認済み外部操作の
+実行証跡）も返す（UC-05, UC-11）。`ProjectDetailView.tsx`はタスク行の下にこれらを注記として表示し、
+`executionLog.evidence`に含まれる「模擬実行」の旨もそのまま表示することでNG-A（虚偽の完了報告）対策を
+UI側にも反映している。
+
 ---
 
 ## 4. データモデルと状態遷移
@@ -245,7 +267,7 @@ tasks.length === 0                      → "hold"
 | Task DBテーブル | 実体 | 反映経路 |
 |---|---|---|
 | `projects` | Session（1 Project = 1 Session） | 作成: `POST /api/projects`。状態更新: Sync層（`span.outcome_evaluation_end`） |
-| `tasks` | Session内の`agent.custom_tool_use`（`create_task`/`update_task_status`） | Sync層のみが書き込む |
+| `tasks` | Session内の`agent.custom_tool_use`（`create_task`/`update_task_status`） | Sync層のみが書き込む。`result`列は`update_task_status`の`result`引数から（UC-05） |
 | `task_dependencies` | `create_task`の`depends_on_task_ids`引数 | Sync層（`create_task`処理時） |
 | `confirmation_requests` | `agent.custom_tool_use`（`execute_external_action`） | Sync層が作成、`routes/confirmations.ts`が解決 |
 | `external_action_logs` | 確認応答後の実行結果（現状は模擬実行のみ） | `routes/confirmations.ts`（承認時のみ） |
@@ -295,6 +317,7 @@ Project.status: active → completed（Outcome satisfied時のみ）
 | Sync層（Session event → Task DB） | `app/src/lib/sync.ts` |
 | REST API本体 | `app/src/server/index.ts`, `app/src/server/routes/*.ts` |
 | Webhook専用公開プロキシ | `app/src/server/webhook-proxy.ts` |
+| TEST_MODE（LLM APIを使わない疑似実行） | `app/src/lib/testMode.ts` |
 | DBスキーマ（開発用SQLite） | `app/src/db/schema.sqlite.sql` |
 | DBスキーマ（本番Postgres） | `db/schema.sql` |
 | ダッシュボードUI | `web/src/components/Dashboard.tsx`, `StatusSprite.tsx` |
@@ -313,6 +336,9 @@ Project.status: active → completed（Outcome satisfied時のみ）
 4. `npm run dev`（`web/`）— フロントエンド起動（:5173）
 5. Webhookを試す場合のみ：`webhook-proxy.ts`を起動しngrok等で:3002を公開 → Anthropic Consoleにエンドポイント登録 → `ANTHROPIC_WEBHOOK_SIGNING_KEY`を`.env`へ設定
 6. Webhook未設定のままSessionの進行を確認したい場合：`npm run sync -- <session_id>`で手動同期（`maSessionId`はProject作成レスポンスまたは`SELECT ma_session_id FROM projects`で確認）
+7. `customTools.ts`（ツール定義）や`systemPrompt.ts`を変更した場合：`npm run agents:update-tools`で
+   既存のCoordinator Agentへ反映する（`agents:setup`は初回作成専用のため、コード変更だけでは既存Agent
+   に反映されない。`agents:update-model`と同じパターン）
 
 ---
 
@@ -332,5 +358,23 @@ Project.status: active → completed（Outcome satisfied時のみ）
 | 認証・複数ユーザー | 未実装。`demo-user`固定のシングルユーザー |
 | 本番DB（Postgres） | スキーマ（`db/schema.sql`）のみ用意。アプリは開発用SQLiteで動作 |
 | Push通知（FCM/APNs） | 未実装。通知はDBの`notifications`テーブルとポーリング取得のみ |
+
+---
+
+## 9. テスト
+
+自動テストは`app/`・`web/`双方にvitestで導入済み（`npm test`）。Anthropic APIへは一切接続せず、
+Task DB相当のロジックとUIの表示ロジックだけを検証する。
+
+| 対象 | 実行コマンド | 方針 |
+|---|---|---|
+| `app/`（repo層・Sync層・APIルート） | `cd app && npm test` | `DB_PATH=":memory:"`（`vitest.config.ts`）でテストファイルごとに独立したSQLite DBを用意し、`src/test/setup.ts`が`schema.sqlite.sql`を適用する。`managed-agents/session.ts`（Anthropic SDK呼び出し）は`vi.mock`で置き換え、実APIキーなしで実行できる |
+| `web/`（UIコンポーネント） | `cd web && npm test` | `jsdom` + Testing Library。`api.ts`を`vi.mock`し、バックエンドを起動せずにコンポーネント単体の表示ロジックを検証する |
+| 型チェック | `npm run typecheck`（app） / `npm run build`（web、`tsc -b`を含む） | — |
+
+現状のカバレッジは新規実装（UC-05/UC-11: タスクの実行結果・実行証跡の記録と表示）と、既存の中核ロジック
+（`deriveProjectState`、Sync層のイベント処理・冪等性、`POST /api/projects`のNG-A対策）が中心。
+UI全体（Dashboard、確認/通知フロー）やWebhook受信（署名検証）のテストは未着手であり、次に着手する場合は
+本章の対象からの拡張として追記すること。
 
 これらは「設計の誤り」ではなく、Phase 1〜2で意図的に後回しにした範囲（`app/README.md`「実装状況」節、`technical-design.md` 10章ロードマップのPhase 3以降に対応）。次フェーズで着手する際は、本章の対応行から着手すること。

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiRequestError } from "../api";
 import type { ProjectSummary, ProjectState } from "../types";
-import { StatusSprite, StatusBadge, STATE_LABEL, EMPTY_OFFICE_CHAR } from "./StatusSprite";
+import { StatusSprite, StatusBadge, STATE_LABEL, SEAT_PLACEHOLDER_DESK } from "./StatusSprite";
 import { ConfirmationsPanel } from "./ConfirmationsPanel";
 import { ProgressGauge } from "./ProgressGauge";
 
@@ -9,6 +9,24 @@ const STATE_ORDER: ProjectState[] = ["progress", "waiting_confirmation", "done",
 
 // 歩行アニメーションの再生時間（CSS側の @keyframes walk-in と合わせる）
 const WALK_IN_MS = 900;
+
+// R: 「何人が・何をしているか」がホーム画面だけで一望できるよう、
+// 実際のProject数に関わらずオフィスとして最低限の座席数を常設する。
+const MIN_SEATS = 8;
+
+// 「誰が・何をしているか」を一目で伝えるための、座席ラベル用の短い作業内容テキスト
+function actionLabel(p: ProjectSummary): string {
+  switch (p.state) {
+    case "progress":
+      return p.nextAction ? `作業中：${p.nextAction}` : "作業中";
+    case "waiting_confirmation":
+      return p.nextAction ? `確認待ち：${p.nextAction}` : "確認待ち";
+    case "done":
+      return "完了";
+    case "hold":
+      return "未着手";
+  }
+}
 
 export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
@@ -117,7 +135,9 @@ export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => vo
         ))}
       </div>
 
-      <p className="section-label">オフィスフロア — {projects?.length ?? 0}件のProject</p>
+      <p className="section-label">
+        オフィスフロア — {projects?.length ?? 0}件のProject（うち稼働中 {counts.progress}人）
+      </p>
 
       <div className="office-floor">
         <div className="office-wall" aria-hidden="true">
@@ -129,35 +149,44 @@ export function Dashboard({ onOpenProject }: { onOpenProject: (id: string) => vo
 
         {projects === null ? (
           <div className="loading">読み込み中...</div>
-        ) : projects.length === 0 ? (
-          <div className="empty-office">
-            <img src={EMPTY_OFFICE_CHAR} alt="" />
-            <div className="empty-office-bubble">
-              まだ誰も出社していません。上の欄に依頼を入力してください。
-            </div>
-          </div>
         ) : (
-          <div className="seat-grid">
-            {projects.map((p) => (
-              <button
-                key={p.id}
-                className={`seat${p.state === "progress" ? " seat-working" : ""}`}
-                onClick={() => onOpenProject(p.id)}
-                type="button"
-                title={p.goal}
-              >
-                <div className="seat-desk">
-                  <StatusSprite state={p.state} walking={walkingIds.has(p.id)} />
-                  <StatusBadge state={p.state} />
+          <>
+            {projects.length === 0 && (
+              <div className="empty-office-hint">
+                まだ誰も出社していません。上の欄に依頼を入力してください。
+              </div>
+            )}
+            <div className="seat-grid">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  className={`seat${p.state === "progress" ? " seat-working" : ""}`}
+                  onClick={() => onOpenProject(p.id)}
+                  type="button"
+                  title={`${p.goal}\n${actionLabel(p)}`}
+                >
+                  <div className="seat-desk">
+                    <StatusSprite state={p.state} walking={walkingIds.has(p.id)} />
+                    <StatusBadge state={p.state} />
+                  </div>
+                  <div className="seat-label">
+                    <span className="seat-label-cat">{p.category ?? "—"}</span>
+                    <span className="seat-label-title">{p.goal}</span>
+                    <span className={`seat-label-action action-${p.state}`}>{actionLabel(p)}</span>
+                    <ProgressGauge counts={p.taskCounts} />
+                  </div>
+                </button>
+              ))}
+              {Array.from({ length: Math.max(0, MIN_SEATS - projects.length) }).map((_, i) => (
+                <div className="seat seat-empty" key={`empty-${i}`} aria-hidden="true">
+                  <div className="seat-desk">
+                    <img className="sprite-img" src={SEAT_PLACEHOLDER_DESK} alt="" />
+                  </div>
+                  <span className="seat-empty-label">空席</span>
                 </div>
-                <div className="seat-label">
-                  <span className="seat-label-cat">{p.category ?? "—"}</span>
-                  <span className="seat-label-title">{p.goal}</span>
-                  <ProgressGauge counts={p.taskCounts} />
-                </div>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </>

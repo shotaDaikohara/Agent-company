@@ -13,6 +13,7 @@
 | `assets/pixel-office/` | 状態可視化UI用ピクセルアート素材（2dPig, CC0） |
 | `app/` | バックエンド（Express API + Task DB + Claude Managed Agents連携） |
 | `web/` | フロントエンド（Vite + React ダッシュボードUI） |
+| `ai-office/` | **別プロジェクト**。ChatGPT Pure Plugin版（MCP Server + React UI）。下記参照 |
 
 ## ローカルで動かす
 
@@ -33,3 +34,10 @@ npm run dev                  # http://localhost:5173 を開く
 
 `ANTHROPIC_API_KEY` 未設定・`agents:setup` 未実行の状態でも両方起動できるが、新しい依頼の送信
 （Project作成）は502エラーになる（失敗を偽装しないため。詳細は `app/README.md`）。
+
+## AI Office（別プロジェクト）
+
+`ai-office/` は上記「AI Cowork」（Anthropic Managed Agents版）とは別系統の、**ChatGPT Pure
+Plugin**として案件管理を提供する構成。Claude Managed AgentsもAnthropic APIも使わず、独自LLM
+APIを一切呼ばない点が異なる。設計の正本はGoogle Drive「AI Office 基本設計（Pure Plugin版）」。
+セットアップ・実装状況は [ai-office/README.md](ai-office/README.md) / [ai-office/TASKS.md](ai-office/TASKS.md) 参照。

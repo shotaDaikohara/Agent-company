@@ -4,6 +4,12 @@ import { z } from "zod";
 import { repo, deriveProjectState } from "../../lib/repo.js";
 import { createProjectSession, sendUserMessage, interruptSession } from "../../managed-agents/session.js";
 import { getOrCreateUserMemoryStore } from "../../managed-agents/memory.js";
+import {
+  createTestSessionId,
+  isTestModeEnabled,
+  isTestSessionId,
+  runTestModeSimulation,
+} from "../../lib/testMode.js";
 
 const router = Router();
 
@@ -53,27 +59,34 @@ router.post("/", async (req, res) => {
 
   let sessionId: string;
   let agentId: string;
-  try {
-    const { loadManagedAgentsConfig } = await import("../../managed-agents/config.js");
-    const config = loadManagedAgentsConfig();
-    agentId = config.agentId;
-    const memoryStoreId = await getOrCreateUserMemoryStore(DEMO_USER_ID);
-    const created = await createProjectSession({
-      goal: parsed.data.goal,
-      memoryStoreIds: [memoryStoreId],
-    });
-    sessionId = created.sessionId;
-  } catch (err) {
-    // NG-A対策: Managed Agents側の作成に失敗した場合、Projectを「作成済み」として
-    // 偽装しない。502を返し、クライアントには再試行を促す。
-    console.error("[projects] Session作成に失敗:", err);
-    return res.status(502).json({
-      error: {
-        code: "managed_agents_unavailable",
-        message:
-          "AIオーケストレーション基盤への接続に失敗しました（ANTHROPIC_API_KEY未設定、または `npm run agents:setup` 未実行の可能性があります）。",
-      },
-    });
+
+  if (isTestModeEnabled()) {
+    // TEST_MODE: Managed Agents（Anthropic API）へは一切接続しない。
+    sessionId = createTestSessionId();
+    agentId = "test-agent";
+  } else {
+    try {
+      const { loadManagedAgentsConfig } = await import("../../managed-agents/config.js");
+      const config = loadManagedAgentsConfig();
+      agentId = config.agentId;
+      const memoryStoreId = await getOrCreateUserMemoryStore(DEMO_USER_ID);
+      const created = await createProjectSession({
+        goal: parsed.data.goal,
+        memoryStoreIds: [memoryStoreId],
+      });
+      sessionId = created.sessionId;
+    } catch (err) {
+      // NG-A対策: Managed Agents側の作成に失敗した場合、Projectを「作成済み」として
+      // 偽装しない。502を返し、クライアントには再試行を促す。
+      console.error("[projects] Session作成に失敗:", err);
+      return res.status(502).json({
+        error: {
+          code: "managed_agents_unavailable",
+          message:
+            "AIオーケストレーション基盤への接続に失敗しました（ANTHROPIC_API_KEY未設定、または `npm run agents:setup` 未実行の可能性があります）。",
+        },
+      });
+    }
   }
 
   const id = randomUUID();
@@ -88,6 +101,11 @@ router.post("/", async (req, res) => {
     ma_session_id: sessionId,
     outcome_id: null,
   });
+
+  if (isTestModeEnabled()) {
+    // 5秒後に自動でタスクを完了させ、result に "Test Result" を入れる（LLM API未使用）。
+    runTestModeSimulation(id, parsed.data.goal);
+  }
 
   res.status(201).json({ id, status: "active", maSessionId: sessionId });
 });
@@ -143,6 +161,11 @@ router.post("/:id/messages", async (req, res) => {
     return res.status(400).json({ error: { code: "invalid_request", message: "textは必須です" } });
   }
 
+  if (isTestSessionId(project.ma_session_id)) {
+    // TEST_MODEで作られたProjectには実Sessionが無いため、Anthropic APIは呼ばない。
+    return res.status(202).json({ accepted: true, testMode: true });
+  }
+
   try {
     await sendUserMessage(project.ma_session_id, parsed.data.text);
   } catch (err) {
@@ -159,6 +182,10 @@ router.post("/:id/interrupt", async (req, res) => {
   const project = repo.getProject(req.params.id);
   if (!project) {
     return res.status(404).json({ error: { code: "not_found", message: "Projectが見つかりません" } });
+  }
+
+  if (isTestSessionId(project.ma_session_id)) {
+    return res.status(202).json({ accepted: true, testMode: true });
   }
 
   try {

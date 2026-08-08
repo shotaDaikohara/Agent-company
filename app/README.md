@@ -31,6 +31,22 @@ curl -X POST http://localhost:3001/api/projects \
 `ANTHROPIC_API_KEY` が未設定、または `agents:setup` 未実行の場合、Project作成は
 **502 `managed_agents_unavailable`** を返す（偽の成功を返さない設計。NG-A対策）。
 
+### TEST_MODE（LLM APIを一切使わない動作確認）
+
+`ANTHROPIC_API_KEY`も`agents:setup`も無しに、UI〜API〜Task DB〜通知の一連の流れだけを
+確認したい場合は `.env` で有効化する。
+
+```bash
+# .env
+TEST_MODE=true
+```
+
+ONにすると、`POST /api/projects`はManaged Agentsへ一切接続せず、代わりにタスクを1件
+「進行中」で作成し、**5秒後に自動で「完了」・結果に`Test Result`をセット**する
+（`src/lib/testMode.ts`）。追加メッセージ送信・割り込みも実Sessionを呼ばず`202`を返す。
+`npm run dev`は`.env`の変更を検知して自動再起動するため、`TEST_MODE`の切り替えに
+サーバーの手動再起動は不要（後述「ホットリロード」）。
+
 ### Webhook未設定時の暫定運用（手動Sync）
 
 本番はManaged AgentsのWebhookが`session.status_idled`等をSyncエンドポイントへ通知する設計だが、
@@ -55,6 +71,27 @@ npm run session:messages -- <session_id>   # agent.messageのテキストのみ�
 npm run agents:update-model
 ```
 
+### ツール定義・システムプロンプトの変更
+
+`customTools.ts` / `systemPrompt.ts` を変更しても、既存のCoordinator Agentには自動反映されない
+（Agentは作成時点のスナップショット）。反映するには：
+
+```bash
+npm run agents:update-tools
+```
+
+### テスト
+
+```bash
+npm test   # vitest。Anthropic APIには接続せず、:memory: SQLite + モックで検証する
+```
+
+### ホットリロード
+
+`npm run dev`は`tsx watch --include .env`で起動しており、`.ts`ソースの変更（既定の挙動）に加えて
+`.env`の変更も検知して自動再起動する。`TEST_MODE`や`ANTHROPIC_API_KEY`を書き換えるたびに
+手動で`Ctrl-C`→再起動する必要はない。
+
 ## ディレクトリ構成
 
 ```
@@ -73,13 +110,18 @@ src/
 - **タスク管理カスタムツール**（`create_task` / `update_task_status` / `execute_external_action`）
   — CoordinatorがTask DBへ状態を反映させる手段。`execute_external_action`は承認されるまで
   `user.custom_tool_result`を意図的に返さないことで確認フロー（R-2, NG-B）を実現している
-  （`src/managed-agents/customTools.ts`, `src/lib/sync.ts`）
+  （`src/managed-agents/customTools.ts`, `src/lib/sync.ts`）。`update_task_status`は`result`引数
+  （実行結果の要約）を受け取り`tasks.result`へ複写する。承認済み外部操作の実行証跡
+  （`external_action_logs`）も含め、`GET /api/projects/:id`・Project詳細UIで確認できる
+  （完了タスクの実行結果が見えないという既知の欠落への対応。`docs/use-cases.md` UC-05/UC-11）
 - **Webhook受信・署名検証**（`client.beta.webhooks.unwrap`、`ANTHROPIC_WEBHOOK_SIGNING_KEY`が必要）
 - **Sync層**（`src/lib/sync.ts`）: Session event履歴をTask DB・confirmation_requests・
   notificationsへ反映。`last_synced_event_id`をカーソルに冪等処理
 - **Memory Store連携**（ユーザースコープ、初回Project作成時に遅延作成）
 - **Outcome対応**（`createProjectSession`に`rubric`を渡すとuser.define_outcomeを送信）
 - 確認応答（`native`=agent_toolset/MCPの`always_ask`、`custom`=自前ツール）の分岐実装
+- **TEST_MODE**（`src/lib/testMode.ts`）：`.env`の`TEST_MODE=true`でManaged Agentsへの接続を
+  完全にバイパスし、5秒後に自動でタスクを完了・`result`に`Test Result`をセットする動作確認モード
 
 ### 未実装・既知の制約（実際の外部サービス連携・認証情報・デプロイが必要なため）
 - **MCPサーバー（Calendar/Gmail/Drive/Slack等）の実接続**：MCPサーバーURLとVaultへのOAuth

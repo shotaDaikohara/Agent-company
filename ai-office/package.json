@@ -1,0 +1,37 @@
+{
+  "name": "ai-office-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:core": "tsc -p tsconfig.core.json",
+    "test:core": "npm run build:core && node --test dist-core/tests/*.test.js",
+    "test": "npm run test:core",
+    "build": "npm run build:plugin",
+    "dev:core": "npm run build:core && node dist-core/src/devServer.js",
+    "build:web": "esbuild web/src/component.tsx --bundle --format=esm --loader:.png=dataurl --outfile=web/dist/component.js",
+    "build:plugin": "npm run build:web && tsc -p tsconfig.plugin.json",
+    "dev:plugin": "npm run build:web && tsx src/mcp/main.ts",
+    "dev": "npm run dev:plugin"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^4.0.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.3",
+    "@types/express": "^5.0.0",
+    "tsx": "^4.20.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

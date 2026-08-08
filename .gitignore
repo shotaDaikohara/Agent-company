@@ -1,5 +1,7 @@
 # 展開済み(assets/pixel-office/)と重複するため、生のzipはコミット対象外にする
 PixelOffice.zip
+# 展開済み(ai-office/)と重複するため、生のzipはコミット対象外にする
+ai-office-mvp-source.zip
 
 # Node
 node_modules/
