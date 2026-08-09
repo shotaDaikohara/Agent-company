@@ -74,6 +74,9 @@ export class AiOfficeService {
     if (current.status === "WAITING_USER" && targetStatus !== "WAITING_USER" && !userInput && !priorUserInputExists) {
       throw new Error("Resolving WAITING_USER requires userInput copied from the user's explicit response");
     }
+    if (current.type === "ACTION" && targetStatus === "DONE" && !userInput && !priorUserInputExists) {
+      throw new Error("ACTION cannot be marked DONE without recorded userInput or real execution evidence");
+    }
 
     if (patch.status === "IN_PROGRESS" || patch.status === "DONE") {
       this.assertDependenciesDoneForCurrentPlan(current);
@@ -132,6 +135,9 @@ export class AiOfficeService {
         }
         if (!source.output?.trim()) {
           throw new Error(`Cannot complete job: evidence source has no stored output: ${sourceId}`);
+        }
+        if (source.type === "ACTION" && !this.hasRecordedUserInput(jobId, sourceId)) {
+          throw new Error(`Cannot complete job: ACTION evidence lacks recorded user input or execution evidence: ${sourceId}`);
         }
       }
     }
