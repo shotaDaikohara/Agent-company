@@ -27,7 +27,7 @@ test("SC-10: multiple jobs remain independent when one waits for user", () => {
     subtasks: [{ key: "research", type: "RESEARCH", instruction: "旅行候補を調査する" }],
   });
 
-  service.updateSubtask(insurance.subtasks[0].id, { status: "WAITING_USER" });
+  service.updateSubtask(insurance.subtasks[0].id, { status: "WAITING_USER", waitingReason: "更新条件を承認しますか？" });
   assert.equal(service.getJob(insurance.job.id).job.status, "WAITING_USER");
 
   service.updateSubtask(travel.subtasks[0].id, { status: "IN_PROGRESS" });
@@ -98,14 +98,40 @@ test("SC-06: simulated reservation cannot be reported as completed while action 
   service.updateSubtask(research.id, { status: "IN_PROGRESS" });
   service.updateSubtask(research.id, { status: "DONE", output: "店舗Aを候補として選定" });
   service.updateSubtask(action.id, { status: "IN_PROGRESS" });
-  service.updateSubtask(action.id, { status: "WAITING_USER", output: "SIMULATED: 予約直前。確定は未実行" });
+  service.updateSubtask(action.id, {
+    status: "WAITING_USER",
+    output: "SIMULATED: 予約直前。確定は未実行",
+    waitingReason: "店舗Aをこの条件で予約してよいですか？",
+  });
 
   assert.equal(service.getJob(reservation.job.id).job.status, "WAITING_USER");
   assert.throws(
     () => service.completeJob(reservation.job.id, "予約完了", [
-      { criterion: "予約が実行済みで成功証跡がある", evidence: "SIMULATED" },
+      {
+        criterion: "予約が実行済みで成功証跡がある",
+        evidence: "SIMULATED",
+        sourceSubtaskIds: [action.id],
+      },
     ]),
-    /unfinished|WAITING_USER/,
+    /not DONE|unfinished|WAITING_USER/,
+  );
+  repo.close();
+});
+
+test("SC-06 regression: ACTION cannot be fabricated as complete without explicit user input", () => {
+  const { repo, service } = createService();
+  const reservation = service.createJob({
+    title: "レストラン予約",
+    request: "予約して",
+    goal: "予約を完了する",
+    completionCriteria: ["予約が実行済みで成功証跡がある"],
+    subtasks: [{ key: "action", type: "ACTION", instruction: "予約を実行する" }],
+  });
+  const action = reservation.subtasks[0];
+  service.updateSubtask(action.id, { status: "IN_PROGRESS" });
+  assert.throws(
+    () => service.updateSubtask(action.id, { status: "DONE", output: "予約番号 ABC-123" }),
+    /ACTION cannot be marked DONE/,
   );
   repo.close();
 });
