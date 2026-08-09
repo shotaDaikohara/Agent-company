@@ -82,28 +82,57 @@ test("plan replacement increments version and prevents implicit old-plan use", (
   repo.close();
 });
 
-test("waiting user on one subtask blocks job only when all remaining work is blocked", () => {
+test("job becomes WAITING_USER when a waiting subtask blocks every runnable path", () => {
   const { repo, service } = createService();
   const detail = sampleJob(service);
-  service.updateSubtask(detail.subtasks[0].id, { status: "WAITING_USER" });
-  assert.equal(service.getJob(detail.job.id).job.status, "IN_PROGRESS");
-  service.updateSubtask(detail.subtasks[1].id, { status: "WAITING_USER" });
-  service.updateSubtask(detail.subtasks[2].id, { status: "WAITING_USER" });
+  service.updateSubtask(detail.subtasks[0].id, {
+    status: "WAITING_USER",
+    waitingReason: "旅行候補の希望エリアを教えてください",
+  });
   assert.equal(service.getJob(detail.job.id).job.status, "WAITING_USER");
+  assert.equal(service.getDashboard()[0].waitingReason, "旅行候補の希望エリアを教えてください");
+  repo.close();
+});
+
+test("job remains IN_PROGRESS when an independent subtask is still runnable", () => {
+  const { repo, service } = createService();
+  const detail = service.createJob({
+    title: "並行調査",
+    request: "二つの条件を調べて",
+    goal: "二つの条件を整理する",
+    completionCriteria: ["二つの条件が整理されている"],
+    subtasks: [
+      { key: "a", type: "RESEARCH", instruction: "条件Aを確認する" },
+      { key: "b", type: "RESEARCH", instruction: "条件Bを調査する" },
+    ],
+  });
+  service.updateSubtask(detail.subtasks[0].id, {
+    status: "WAITING_USER",
+    waitingReason: "条件Aの希望値を教えてください",
+  });
+  assert.equal(service.getJob(detail.job.id).job.status, "IN_PROGRESS");
   repo.close();
 });
 
 test("cannot complete job while current subtasks are unfinished", () => {
   const { repo, service } = createService();
   const detail = sampleJob(service);
-  assert.throws(() => service.completeJob(detail.job.id, "完成", []), /unfinished/);
+  assert.throws(() => service.completeJob(detail.job.id, "完成", []), /not DONE|unfinished/);
   for (const st of detail.subtasks) {
     service.updateSubtask(st.id, { status: "IN_PROGRESS" });
     service.updateSubtask(st.id, { status: "DONE", output: `${st.type} done` });
   }
   const completed = service.completeJob(detail.job.id, "旅行計画完成", [
-    { criterion: "候補が整理されている", evidence: "調査サブタスクで候補を整理済み" },
-    { criterion: "未完了事項が明示されている", evidence: "最終成果に未完了事項を記載" },
+    {
+      criterion: "候補が整理されている",
+      evidence: "調査サブタスクで候補を整理済み",
+      sourceSubtaskIds: [detail.subtasks[0].id],
+    },
+    {
+      criterion: "未完了事項が明示されている",
+      evidence: "レビューサブタスクで未完了事項を確認済み",
+      sourceSubtaskIds: [detail.subtasks[2].id],
+    },
   ]);
   assert.equal(completed.job.status, "COMPLETED");
   assert.equal(completed.job.finalOutput, "旅行計画完成");
@@ -122,7 +151,6 @@ test("cancel keeps history and does not delete completed subtasks", () => {
   assert.ok(canceled.events.some((e) => e.eventType === "JOB_CANCELED"));
   repo.close();
 });
-
 
 test("resolves subtask dependency keys to generated IDs", () => {
   const { repo, service } = createService();
@@ -143,8 +171,12 @@ test("complete job requires evidence for every completion criterion", () => {
     service.updateSubtask(st.id, { status: "DONE", output: `${st.type} done` });
   }
   assert.throws(() => service.completeJob(detail.job.id, "完成", [
-    { criterion: "候補が整理されている", evidence: "候補あり" },
-  ]), /missing completion evidence/);
+    {
+      criterion: "候補が整理されている",
+      evidence: "候補あり",
+      sourceSubtaskIds: [detail.subtasks[0].id],
+    },
+  ]), /exactly one completion evidence item|missing completion evidence/);
   repo.close();
 });
 
@@ -162,7 +194,6 @@ test("explicitly reused old output is tied to the new plan version", () => {
   assert.equal(reused.reusedInPlanVersion, 2);
   repo.close();
 });
-
 
 test("rejects cyclic subtask dependencies", () => {
   const { repo, service } = createService();
@@ -185,6 +216,110 @@ test("cannot start subtask until dependencies are done", () => {
   service.updateSubtask(research.id, { status: "IN_PROGRESS" });
   service.updateSubtask(research.id, { status: "DONE", output: "調査完了" });
   assert.equal(service.updateSubtask(create.id, { status: "IN_PROGRESS" }).status, "IN_PROGRESS");
+  repo.close();
+});
+
+test("WAITING_USER persists the exact question and the explicit user response", () => {
+  const { repo, service } = createService();
+  const detail = service.createJob({
+    title: "確認待ち",
+    request: "予算を確認して進めて",
+    goal: "予算条件を確定する",
+    completionCriteria: ["予算条件が確定している"],
+    subtasks: [{ key: "confirm", type: "ACTION", instruction: "予算上限を確認する" }],
+  });
+  const subtask = detail.subtasks[0];
+  service.updateSubtask(subtask.id, {
+    status: "WAITING_USER",
+    waitingReason: "予算上限は3万円でよいですか？",
+  });
+  const waiting = service.getJob(detail.job.id);
+  assert.ok(waiting.events.some((event) =>
+    event.subtaskId === subtask.id
+    && event.eventType === "CONFIRMATION_REQUIRED"
+    && event.payload.question === "予算上限は3万円でよいですか？"));
+
+  service.updateSubtask(subtask.id, {
+    status: "DONE",
+    output: "予算上限3万円で確定",
+    userInput: "3万円でいいよ",
+  });
+  const resolved = service.getJob(detail.job.id);
+  assert.ok(resolved.events.some((event) =>
+    event.subtaskId === subtask.id
+    && event.eventType === "USER_INPUT_RECEIVED"
+    && event.payload.input === "3万円でいいよ"));
+  repo.close();
+});
+
+test("cannot resolve WAITING_USER without recorded user input", () => {
+  const { repo, service } = createService();
+  const detail = service.createJob({
+    title: "確認待ち",
+    request: "確認して",
+    goal: "確認を終える",
+    completionCriteria: ["確認済み"],
+    subtasks: [{ key: "confirm", type: "ACTION", instruction: "確認する" }],
+  });
+  const subtask = detail.subtasks[0];
+  service.updateSubtask(subtask.id, { status: "WAITING_USER", waitingReason: "実行してよいですか？" });
+  assert.throws(
+    () => service.updateSubtask(subtask.id, { status: "DONE", output: "実行済み" }),
+    /requires userInput|ACTION cannot be marked DONE/,
+  );
+  repo.close();
+});
+
+test("current-plan CANCELED subtask cannot be used to complete a job", () => {
+  const { repo, service } = createService();
+  const detail = service.createJob({
+    title: "予約",
+    request: "予約して",
+    goal: "予約を完了する",
+    completionCriteria: ["予約が完了している"],
+    subtasks: [{ key: "action", type: "ACTION", instruction: "予約を実行する" }],
+  });
+  repo.updateSubtask(detail.subtasks[0].id, { status: "CANCELED" });
+  assert.throws(
+    () => service.completeJob(detail.job.id, "予約完了", [{
+      criterion: "予約が完了している",
+      evidence: "予約済み",
+      sourceSubtaskIds: [detail.subtasks[0].id],
+    }]),
+    /all current-plan subtasks must be DONE/,
+  );
+  repo.close();
+});
+
+test("completion evidence must cite an effective DONE subtask", () => {
+  const { repo, service } = createService();
+  const detail = sampleJob(service);
+  for (const st of detail.subtasks) {
+    service.updateSubtask(st.id, { status: "IN_PROGRESS" });
+    service.updateSubtask(st.id, { status: "DONE", output: `${st.type} done` });
+  }
+  assert.throws(() => service.completeJob(detail.job.id, "完成", [
+    {
+      criterion: "候補が整理されている",
+      evidence: "根拠",
+      sourceSubtaskIds: ["00000000-0000-4000-8000-000000000000"],
+    },
+    {
+      criterion: "未完了事項が明示されている",
+      evidence: "根拠",
+      sourceSubtaskIds: [detail.subtasks[2].id],
+    },
+  ]), /evidence source is not an effective DONE subtask/);
+  repo.close();
+});
+
+test("direct current-plan subtask cancellation is rejected by the service", () => {
+  const { repo, service } = createService();
+  const detail = sampleJob(service);
+  assert.throws(
+    () => service.updateSubtask(detail.subtasks[0].id, { status: "CANCELED" }),
+    /use replace_plan/,
+  );
   repo.close();
 });
 
