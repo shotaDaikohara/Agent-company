@@ -1,12 +1,13 @@
 {
   "name": "ai-office-mvp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build:core": "tsc -p tsconfig.core.json",
     "test:core": "npm run build:core && node --test dist-core/tests/*.test.js",
-    "test": "npm run test:core",
+    "test:mcp": "npm run build:plugin && node --test tests/mcp-contract.test.mjs",
+    "test": "npm run test:core && npm run test:mcp",
     "build": "npm run build:plugin",
     "dev:core": "npm run build:core && node dist-core/src/devServer.js",
     "build:web": "esbuild web/src/component.tsx --bundle --format=esm --loader:.png=dataurl --outfile=web/dist/component.js",

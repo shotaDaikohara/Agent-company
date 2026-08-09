@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Repository } from "../db/repository.js";
 import { AiOfficeService } from "../tools/service.js";
 import { currentJobContext } from "../tools/presenters.js";
+import { AI_OFFICE_VERSION } from "../version.js";
 
 const DASHBOARD_URI = "ui://ai-office/dashboard-v1.html";
 
@@ -35,7 +36,7 @@ export function createAiOfficeMcpServer(dbPath = process.env.AI_OFFICE_DB ?? "./
   const repo = new Repository(dbPath);
   const service = new AiOfficeService(repo);
   const server = new McpServer(
-    { name: "ai-office", version: "0.1.0" },
+    { name: "ai-office", version: AI_OFFICE_VERSION },
     {
       instructions:
         "Use AI Office for multi-step or persistent work. Keep independent goals as separate Jobs. Before changing an existing Job, retrieve it. Treat RESEARCH/CREATE/REVIEW/ACTION as logical stages performed by this ChatGPT, not background agents. Never mark external actions complete without evidence.",
