@@ -165,11 +165,14 @@ export function createAiOfficeMcpServer(dbPath = process.env.AI_OFFICE_DB ?? "./
     "update_subtask",
     {
       title: "Update AI Office subtask",
-      description: "Update a subtask state or save its output. DONE requires a non-empty output.",
+      description:
+        "Update a subtask state or save its output. WAITING_USER requires waitingReason. When resolving WAITING_USER, pass the user's explicit reply in userInput. Current-plan CANCELED is not allowed; use replace_plan for obsolete work.",
       inputSchema: {
         subtaskId: z.string().uuid(),
-        status: z.enum(["TODO", "IN_PROGRESS", "WAITING_USER", "DONE", "FAILED", "CANCELED"]).optional(),
+        status: z.enum(["TODO", "IN_PROGRESS", "WAITING_USER", "DONE", "FAILED"]).optional(),
         output: z.string().nullable().optional(),
+        waitingReason: z.string().min(1).optional(),
+        userInput: z.string().min(1).optional(),
       },
       outputSchema: { subtask: z.unknown(), context: z.unknown() },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -222,14 +225,18 @@ export function createAiOfficeMcpServer(dbPath = process.env.AI_OFFICE_DB ?? "./
     {
       title: "Complete AI Office job",
       description:
-        "Complete a Job only after current subtasks are finished and each stored completion criterion has concrete evidence. Do not use to fake completion of external actions.",
+        "Complete a Job only after every current-plan subtask is DONE. Each completion criterion must cite effective DONE source subtasks with stored output. ACTION evidence also requires recorded user input/execution confirmation.",
       inputSchema: {
         jobId: z.string().uuid(),
         finalOutput: z.string().min(1),
-        completionEvidence: z.array(z.object({ criterion: z.string().min(1), evidence: z.string().min(1) })).min(1),
+        completionEvidence: z.array(z.object({
+          criterion: z.string().min(1),
+          evidence: z.string().min(1),
+          sourceSubtaskIds: z.array(z.string().uuid()).min(1),
+        })).min(1),
       },
       outputSchema: { context: z.unknown(), dashboard: z.array(z.unknown()) },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     },
     async ({ jobId, finalOutput, completionEvidence }) => {
       try {

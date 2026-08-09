@@ -30,6 +30,7 @@ export const EVENT_TYPES = [
   "SUBTASK_UPDATED",
   "PRIORITY_CHANGED",
   "CONFIRMATION_REQUIRED",
+  "USER_INPUT_RECEIVED",
   "JOB_COMPLETED",
   "JOB_CANCELED",
 ] as const;
@@ -38,6 +39,7 @@ export type EventType = (typeof EVENT_TYPES)[number];
 export interface CompletionEvidence {
   criterion: string;
   evidence: string;
+  sourceSubtaskIds: string[];
 }
 
 export interface Job {
