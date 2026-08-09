@@ -1,6 +1,6 @@
 {
   "name": "ai-office",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Persist and manage multiple ChatGPT work items as independent jobs with goals, subtasks, priorities, waiting states, outputs, and a visual office UI.",
   "skills": "./skills/",
   "apps": "./.app.json"

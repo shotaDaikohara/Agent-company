@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createAiOfficeMcpServer } from "./createServer.js";
+import { AI_OFFICE_VERSION } from "../version.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
@@ -8,7 +9,7 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.json({ ok: true, service: "ai-office" });
+  res.json({ ok: true, service: "ai-office", version: AI_OFFICE_VERSION });
 });
 
 app.post("/mcp", async (req: Request, res: Response) => {
